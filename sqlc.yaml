@@ -7,5 +7,6 @@ sql:
       go:
         package: "db"
         out: "./db/sqlc"
-        sql_package: "pgx/v5"
+        sql_package: "database/sql"
+        sql_driver: "github.com/lib/pq"
         emit_json_tags: true
