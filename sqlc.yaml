@@ -11,3 +11,4 @@ sql:
         sql_driver: "github.com/lib/pq"
         emit_json_tags: true
         emit_empty_slices: true
+        emit_interface: true
