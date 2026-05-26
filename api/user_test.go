@@ -62,6 +62,7 @@ func TestCreateUserAPI(t *testing.T) {
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				requireBodyMatchError(t, recorder.Body)
 			},
 		},
 		{
@@ -80,6 +81,7 @@ func TestCreateUserAPI(t *testing.T) {
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, recorder.Code)
+				requireBodyMatchError(t, recorder.Body)
 			},
 		},
 		{
@@ -97,6 +99,7 @@ func TestCreateUserAPI(t *testing.T) {
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				requireBodyMatchError(t, recorder.Body)
 			},
 		},
 		{
@@ -114,6 +117,7 @@ func TestCreateUserAPI(t *testing.T) {
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				requireBodyMatchError(t, recorder.Body)
 			},
 		},
 		{
@@ -131,6 +135,7 @@ func TestCreateUserAPI(t *testing.T) {
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				requireBodyMatchError(t, recorder.Body)
 			},
 		},
 	}
