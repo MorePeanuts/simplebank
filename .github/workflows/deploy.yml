@@ -17,15 +17,13 @@ jobs:
       - name: Login to ACR
         uses: aliyun/acr-login@v1
         with:
-          login-server: "crpi-91h6vvzpxtehzjsp.cn-shanghai.personal.cr.aliyuncs.com"
-          region-id: "cn-shanghai"
-          access-key-id: ${{ secrets.ACR_ACCESS_KEY_ID }}
-          access-key-secret: ${{ secrets.ACR_ACCESS_KEY_SECRET }}
-          instance-id: "crpi-91h6vvzpxtehzjsp"
+          login-server: "crpi-ax15wkp071s0xvth.cn-shanghai.personal.cr.aliyuncs.com"
+          username: "${{ secrets.REGISTRY_USERNAME }}"
+          password: "${{ secrets.REGISTRY_PASSWORD }}"
 
       - name: Build and push image
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t crpi-91h6vvzpxtehzjsp.cn-shanghai.personal.cr.aliyuncs.com/morepeanuts/simple_bank:$IMAGE_TAG .
-          docker push crpi-91h6vvzpxtehzjsp.cn-shanghai.personal.cr.aliyuncs.com/morepeanuts/simple_bank:$IMAGE_TAG
+          docker build -t crpi-ax15wkp071s0xvth.cn-shanghai.personal.cr.aliyuncs.com/more_peanuts/simplebank:$IMAGE_TAG .
+          docker push crpi-ax15wkp071s0xvth.cn-shanghai.personal.cr.aliyuncs.com/more_peanuts/simplebank:$IMAGE_TAG
