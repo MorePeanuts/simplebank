@@ -19,8 +19,8 @@ jobs:
         with:
           login-server: "crpi-91h6vvzpxtehzjsp.cn-shanghai.personal.cr.aliyuncs.com"
           region-id: "cn-shanghai"
-          access-key-id: ${{secrets.ACR_ACCESS_KEY_ID}}
-          access-key-secret: ${{secrets.ACR_ACCESS_KEY_SECRET}}
+          access-key-id: ${{ secrets.ACR_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.ACR_ACCESS_KEY_SECRET }}
           instance-id: "crpi-91h6vvzpxtehzjsp"
 
       - name: Build and push image
