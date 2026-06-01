@@ -1,0 +1,31 @@
+name: Deploy to production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Login to ACR
+        uses: aliyun/acr-login@v1
+        with:
+          login-server: "crpi-91h6vvzpxtehzjsp.cn-shanghai.personal.cr.aliyuncs.com"
+          region-id: "cn-shanghai"
+          access-key-id: ${{secrets.ACR_ACCESS_KEY_ID}}
+          access-key-secret: ${{secrets.ACR_ACCESS_KEY_SECRET}}
+          instance-id: "crpi-91h6vvzpxtehzjsp"
+
+      - name: Build and push image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t crpi-91h6vvzpxtehzjsp.cn-shanghai.personal.cr.aliyuncs.com/morepeanuts/simple_bank:$IMAGE_TAG .
+          docker push crpi-91h6vvzpxtehzjsp.cn-shanghai.personal.cr.aliyuncs.com/morepeanuts/simple_bank:$IMAGE_TAG
