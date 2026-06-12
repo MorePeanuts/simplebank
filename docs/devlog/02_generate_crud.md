@@ -19,7 +19,7 @@ RETURNING *;
 SELECT * FROM accounts
 WHERE id = $1 LIMIT 1;
 
--- name: ListAccount :many
+-- name: ListAccounts :many
 SELECT * FROM accounts
 ORDER BY id
 LIMIT $1
@@ -67,29 +67,28 @@ sql:
       go:
         package: "db"
         out: "./db/sqlc"
-        sql_package: "pgx/v5"
+        sql_package: "database/sql"
+        sql_driver: "github.com/lib/pq"
         emit_json_tags: true
 ```
 
 部分关键字段的作用：
 
-- `sql_package`：指定生成代码所使用的数据库驱动包。这里设置为 `pgx/v5`，表示生成的代码会使用 `github.com/jackc/pgx/v5` 提供的接口（如 `pgx.Rows`、`pgx.Tx`、`pgconn.CommandTag` 等）来执行 SQL 操作。
+- `sql_package`：指定生成代码所使用的数据库访问层。这里设置为 `database/sql`，表示生成的代码会基于 Go 标准库的 `database/sql` 接口（`ExecContext`、`QueryContext`、`QueryRowContext`、`*sql.Tx` 等）来执行 SQL 操作。可选值还有 `pgx/v5`、`pgx/v4` 等，不同的值会影响生成代码中数据库操作接口和数据类型的实现。
+- `sql_driver`：在 `sql_package` 为 `database/sql` 时使用，用于告诉 sqlc 将使用哪个驱动来连接数据库，进而决定如何把 SQL 列类型映射到 Go 类型（例如 `lib/pq` 把 `TIMESTAMPTZ` 映射为 `time.Time`，而不是某个驱动特有的类型）。这里设置为 `github.com/lib/pq`，是 PostgreSQL 在 `database/sql` 之上的标准驱动。
 - `emit_json_tags`：是否在生成的 Go 结构体字段上添加 JSON 标签（如 `json:"id"`）。开启后，生成的模型结构体可以直接用于 JSON 序列化与反序列化，便于在 HTTP 接口中返回数据。
 
-安装 `github.com/jackc/pgx/v5` 依赖：
+安装 `github.com/lib/pq` 依赖：
 
 ```bash
-go get github.com/jackc/pgx/v5
+go get github.com/lib/pq
 ```
 
-`pgx` 是一个 PostgreSQL 驱动和工具集。Go 标准库中的 `database/sql` 本身只定义了数据库操作的通用接口，并不能直接连接到任何具体的数据库，必须搭配第三方驱动使用。
+`lib/pq` 是一个 PostgreSQL 驱动。Go 标准库中的 `database/sql` 本身只定义了数据库操作的通用接口，并不能直接连接到任何具体的数据库，必须搭配第三方驱动使用。
 
-在 PostgreSQL 生态中，常见的驱动有两个：[`lib/pq`](https://github.com/lib/pq) 和 [`pgx`](https://github.com/jackc/pgx)，二者都实现了 `database/sql/driver` 接口，可以作为 `database/sql` 的底层驱动使用。`lib/pq` 出现得更早、API 也更简单，但目前已基本停止维护；`pgx` 则是社区主流选择，功能更完整、性能更好。
+在 PostgreSQL 生态中，常见的驱动有两个：[`lib/pq`](https://github.com/lib/pq) 和 [`pgx`](https://github.com/jackc/pgx)，二者都实现了 `database/sql/driver` 接口，可以作为 `database/sql` 的底层驱动使用。`lib/pq` 出现得更早、API 也更简单，目前已基本停止维护，但作为 `database/sql` 的纯驱动来用依然稳定可靠；`pgx` 则功能更完整、性能更好，既可以通过 `pgx/v5/stdlib` 包作为 `database/sql` 的驱动使用（与 `lib/pq` 的定位相同），也可以直接使用其原生 API 绕过 `database/sql` 以获得更好的性能。
 
-`pgx` 提供了两种使用方式：
-
-- 通过 `github.com/jackc/pgx/v5/stdlib` 包作为标准库 `database/sql` 的 PostgreSQL 驱动使用（与 `lib/pq` 的定位相同）；
-- 直接使用 `github.com/jackc/pgx/v5` 提供的原生 API（绕过 `database/sql`），可以获得更好的性能，并原生支持 PostgreSQL 的特有数据类型（如 `Timestamptz`、`UUID`、`JSONB` 等）和更完善的连接池实现。
+在本项目中，由于 `sqlc.yaml` 中 `sql_package` 设置为 `database/sql`、`sql_driver` 设置为 `github.com/lib/pq`，sqlc 生成的代码会基于 `database/sql` 接口编写，并通过 `lib/pq` 实际连接和访问 PostgreSQL。
 
 使用以下命令生成 Go 代码：
 
@@ -99,7 +98,7 @@ sqlc generate
 
 生成的代码包括：
 
-- `db/sqlc/db.go`：定义了数据库操作的核心抽象。其中 `DBTX` 接口抽象了执行 SQL 所需的方法（`Exec`、`Query`、`QueryRow`），使得 `Queries` 既可以基于普通连接池工作，也可以基于事务（通过 `WithTx` 方法）工作；`Queries` 结构体持有一个 `DBTX`，所有生成的 CRUD 方法都挂在它上面。
+- `db/sqlc/db.go`：定义了数据库操作的核心抽象。其中 `DBTX` 接口抽象了执行 SQL 所需的方法（`ExecContext`、`QueryContext`、`QueryRowContext`、`PrepareContext`），使得 `Queries` 既可以基于普通连接池工作，也可以基于事务（通过 `WithTx` 方法）工作；`Queries` 结构体持有一个 `DBTX`，所有生成的 CRUD 方法都挂在它上面。
 
 <details>
 <summary>展开查看 db.go 代码</summary>
@@ -113,15 +112,14 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
+	"database/sql"
 )
 
 type DBTX interface {
-	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
-	Query(context.Context, string, ...interface{}) (pgx.Rows, error)
-	QueryRow(context.Context, string, ...interface{}) pgx.Row
+	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+	PrepareContext(context.Context, string) (*sql.Stmt, error)
+	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
 }
 
 func New(db DBTX) *Queries {
@@ -132,7 +130,7 @@ type Queries struct {
 	db DBTX
 }
 
-func (q *Queries) WithTx(tx pgx.Tx) *Queries {
+func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db: tx,
 	}
@@ -141,7 +139,7 @@ func (q *Queries) WithTx(tx pgx.Tx) *Queries {
 
 </details>
 
-- `db/sqlc/models.go`：根据 `db/migration/` 中的 schema 自动生成的数据模型。每张表对应一个 Go 结构体，字段类型根据 SQL 列类型自动映射（例如 `TIMESTAMPTZ` 映射为 `pgtype.Timestamptz`）。由于配置开启了 `emit_json_tags`，每个字段都自带 JSON 标签，可直接用于 API 响应。
+- `db/sqlc/models.go`：根据 `db/migration/` 中的 schema 自动生成的数据模型。每张表对应一个 Go 结构体，字段类型根据 SQL 列类型自动映射（例如 `TIMESTAMPTZ` 映射为 `time.Time`）。由于配置开启了 `emit_json_tags`，每个字段都自带 JSON 标签，可直接用于 API 响应。
 
 <details>
 <summary>展开查看 models.go 代码</summary>
@@ -154,23 +152,23 @@ func (q *Queries) WithTx(tx pgx.Tx) *Queries {
 package db
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 type Account struct {
-	ID        int64              `json:"id"`
-	Owner     string             `json:"owner"`
-	Balance   int64              `json:"balance"`
-	Currency  string             `json:"currency"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID        int64     `json:"id"`
+	Owner     string    `json:"owner"`
+	Balance   int64     `json:"balance"`
+	Currency  string    `json:"currency"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Entry struct {
 	ID        int64 `json:"id"`
 	AccountID int64 `json:"account_id"`
 	// can be negative or positive
-	Amount    int64              `json:"amount"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Amount    int64     `json:"amount"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Transfer struct {
@@ -178,14 +176,14 @@ type Transfer struct {
 	FromAccountID int64 `json:"from_account_id"`
 	ToAccountID   int64 `json:"to_account_id"`
 	// must be positive
-	Amount    int64              `json:"amount"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Amount    int64     `json:"amount"`
+	CreatedAt time.Time `json:"created_at"`
 }
 ```
 
 </details>
 
-- `db/sqlc/account.sql.go`：与 `db/query/account.sql` 一一对应的 CRUD 实现。sqlc 会为每条 SQL 语句生成一个 Go 函数（如 `CreateAccount`、`GetAccount` 等）；当 SQL 含有多个参数时，还会额外生成对应的参数结构体（如 `CreateAccountParams`、`ListAccountParams`）。函数内部使用 `pgx/v5` 接口执行 SQL 并把结果扫描到模型结构体上。
+- `db/sqlc/account.sql.go`：与 `db/query/account.sql` 一一对应的 CRUD 实现。sqlc 会为每条 SQL 语句生成一个 Go 函数（如 `CreateAccount`、`GetAccount` 等）；当 SQL 含有多个参数时，还会额外生成对应的参数结构体（如 `CreateAccountParams`、`ListAccountsParams`）。函数内部使用 `database/sql` 接口执行 SQL 并把结果扫描到模型结构体上。
 
 <details>
 <summary>展开查看 account.sql.go 代码</summary>
@@ -220,7 +218,7 @@ type CreateAccountParams struct {
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
-	row := q.db.QueryRow(ctx, createAccount, arg.Owner, arg.Balance, arg.Currency)
+	row := q.db.QueryRowContext(ctx, createAccount, arg.Owner, arg.Balance, arg.Currency)
 	var i Account
 	err := row.Scan(
 		&i.ID,
@@ -238,7 +236,7 @@ WHERE id = $1
 `
 
 func (q *Queries) DeleteAccount(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteAccount, id)
+	_, err := q.db.ExecContext(ctx, deleteAccount, id)
 	return err
 }
 
@@ -248,7 +246,7 @@ WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id int64) (Account, error) {
-	row := q.db.QueryRow(ctx, getAccount, id)
+	row := q.db.QueryRowContext(ctx, getAccount, id)
 	var i Account
 	err := row.Scan(
 		&i.ID,
@@ -260,20 +258,20 @@ func (q *Queries) GetAccount(ctx context.Context, id int64) (Account, error) {
 	return i, err
 }
 
-const listAccount = `-- name: ListAccount :many
+const listAccounts = `-- name: ListAccounts :many
 SELECT id, owner, balance, currency, created_at FROM accounts
 ORDER BY id
 LIMIT $1
 OFFSET $2
 `
 
-type ListAccountParams struct {
+type ListAccountsParams struct {
 	Limit  int32 `json:"limit"`
 	Offset int32 `json:"offset"`
 }
 
-func (q *Queries) ListAccount(ctx context.Context, arg ListAccountParams) ([]Account, error) {
-	rows, err := q.db.Query(ctx, listAccount, arg.Limit, arg.Offset)
+func (q *Queries) ListAccounts(ctx context.Context, arg ListAccountsParams) ([]Account, error) {
+	rows, err := q.db.QueryContext(ctx, listAccounts, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -291,6 +289,9 @@ func (q *Queries) ListAccount(ctx context.Context, arg ListAccountParams) ([]Acc
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -311,7 +312,7 @@ type UpdateAccountParams struct {
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error) {
-	row := q.db.QueryRow(ctx, updateAccount, arg.ID, arg.Balance)
+	row := q.db.QueryRowContext(ctx, updateAccount, arg.ID, arg.Balance)
 	var i Account
 	err := row.Scan(
 		&i.ID,
