@@ -286,6 +286,25 @@ server:
 .PHONY: postgres createdb dropdb migrateup migratedown sqlc test server
 ```
 
+## 用 API 测试平台跑一遍
+
+服务起来之后，可以用 API 测试平台进行测试。
+
+常见的几个选项：
+
+- [Postman](https://www.postman.com/)：生态最成熟，团队协作、Mock Server、自动化测试都齐全；缺点是需要登录、桌面端越来越重，简单接口测试有点过度。
+- [Bruno](https://www.usebruno.com/)：开源、本地优先，请求以纯文本（`.bru`）保存在仓库里，可以直接 git 跟踪 —— 对于"接口定义跟着代码一起 review"的工作流非常自然。
+- [Insomnia](https://insomnia.rest/)、[Hoppscotch](https://hoppscotch.io/) 等：各有侧重，整体能力相近。
+
+按 RESTful 接口逐个加进去：
+
+| 名称 | 方法 | URL | 说明 |
+| ---- | ---- | ---- | ---- |
+| `Create Account` | `POST` | `{{baseUrl}}/accounts` | Body 用 `JSON`：`{"owner": "Alice", "currency": "USD"}` |
+| `Get Account` | `GET` | `{{baseUrl}}/accounts/:id` | Path 参数 `id` 设成上一步返回的 ID |
+| `List Accounts` | `GET` | `{{baseUrl}}/accounts?page_id=1&page_size=5` | Query 参数 `page_id` / `page_size` 在 Bruno 的 Query 面板里填 |
+
+
 ## 小结
 
 | 改动 | 解决的问题 |
@@ -295,6 +314,7 @@ server:
 | `createAccount` / `getAccount` / `listAccounts` | 暴露三个最基本的 RESTful 接口；用 `binding` 标签做参数校验 |
 | `sqlc.yaml` 加 `emit_empty_slices: true` | 列表接口在没有数据时返回 `[]` 而不是 `null`，避免前端类型不一致 |
 | `main.go` 新增、Makefile 加 `server` 目标 | 一行 `make server` 就能起服务 |
+| 用 Bruno 维护一份 collection 进 git | 接口的"使用者视角"和实现一起被 review，不靠口口相传的 curl |
 
 这一版有几处刻意留到后面处理的简化：
 - 数据库连接串、监听地址等配置全是常量 → [07. 配置管理](./07_config_management.md)；

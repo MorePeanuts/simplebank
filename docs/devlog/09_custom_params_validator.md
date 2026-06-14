@@ -283,31 +283,33 @@ router.GET("/accounts", server.listAccounts)
 
 ## 验证一下
 
-启动服务后用 curl 试几个分支：
+测试 `Create Transfer` 请求：
 
-```bash
-# 1) currency 不在合法集合 -> 400, 提示 "Field validation for 'Currency' failed on the 'currency' tag"
-curl -X POST http://localhost:8080/transfers \
-  -H 'Content-Type: application/json' \
-  -d '{"from_account_id":1,"to_account_id":2,"amount":10,"currency":"RMB"}'
+- Method: `POST`
+- URL: `{{baseUrl}}/transfers`
+- Body（JSON）：
 
-# 2) currency 合法但和账户币种不一致 -> 400, "account [2] currency mismatch: USD vs EUR"
-curl -X POST http://localhost:8080/transfers \
-  -H 'Content-Type: application/json' \
-  -d '{"from_account_id":1,"to_account_id":2,"amount":10,"currency":"EUR"}'
-
-# 3) 账户不存在 -> 404
-curl -X POST http://localhost:8080/transfers \
-  -H 'Content-Type: application/json' \
-  -d '{"from_account_id":1,"to_account_id":99999,"amount":10,"currency":"USD"}'
-
-# 4) 都对 -> 200, 返回 TransferTxResult
-curl -X POST http://localhost:8080/transfers \
-  -H 'Content-Type: application/json' \
-  -d '{"from_account_id":1,"to_account_id":2,"amount":10,"currency":"USD"}'
+```json
+{
+  "from_account_id": 1,
+  "to_account_id": 2,
+  "amount": 10,
+  "currency": "USD"
+}
 ```
 
-第一条走的是 tag 校验，连 handler 都没进；第二条进了 handler 但被 `validAccount` 拦下；第三条触发 `sql.ErrNoRows` 分支；第四条全部通过，落到 `store.TransferTx`。
+为了同时观察四个分支，再在 collection 里把这个请求 **Duplicate** 三份，分别命名为 `Create Transfer - InvalidCurrency` / `... - CurrencyMismatch` / `... - AccountNotFound`，把 Body 改成对应的 payload。这样每个分支都有一份能直接 `Send` 复跑的请求，比每次手动改一个字段稳得多。
+
+预期结果：
+
+| 请求 | Body 关键字段 | 状态码 | 响应体要点 |
+| ---- | ---- | ---- | ---- |
+| `Create Transfer - InvalidCurrency` | `currency: "RMB"` | `400` | `Field validation for 'Currency' failed on the 'currency' tag` |
+| `Create Transfer - CurrencyMismatch` | `currency: "EUR"`（账户实际是 USD） | `400` | `account [2] currency mismatch: USD vs EUR` |
+| `Create Transfer - AccountNotFound` | `to_account_id: 99999` | `404` | `sql: no rows in result set` |
+| `Create Transfer` | 全部对 | `200` | `TransferTxResult` 完整结构 |
+
+四条对应四条不同的代码路径：第一条走的是 tag 校验，连 handler 都没进；第二条进了 handler 但被 `validAccount` 拦下；第三条触发 `sql.ErrNoRows` 分支；第四条全部通过，落到 `store.TransferTx`。
 
 ## 小结
 
