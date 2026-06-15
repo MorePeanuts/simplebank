@@ -29,9 +29,9 @@ func TestJWTMaker(t *testing.T) {
 	require.NotEmpty(t, payload)
 
 	require.NotZero(t, payload.ID)
-	require.Equal(t, username, payload.Subject)
-	require.WithinDuration(t, issuedAt, payload.IssuedAt.Time, time.Second)
-	require.WithinDuration(t, expiredAt, payload.ExpiresAt.Time, time.Second)
+	require.Equal(t, username, payload.Username)
+	require.WithinDuration(t, issuedAt, payload.IssuedAt, time.Second)
+	require.WithinDuration(t, expiredAt, payload.ExpiredAt, time.Second)
 }
 
 func TestExpiredJWTToken(t *testing.T) {
@@ -62,8 +62,10 @@ func TestInvalidJWTTokenAlgNone(t *testing.T) {
 
 	payload, err = maker.VerifyToken(token)
 	require.Error(t, err)
-	require.EqualError(t, err,
-		fmt.Sprintf("%s: signing method %v is invalid",
+	require.EqualError(
+		t, err,
+		fmt.Sprintf(
+			"%s: signing method %v is invalid",
 			jwt.ErrTokenSignatureInvalid, jwt.SigningMethodNone.Alg(),
 		),
 	)
