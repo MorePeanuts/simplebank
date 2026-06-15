@@ -46,6 +46,9 @@ DROP TABLE IF EXISTS "users";
 
 down 的顺序和 up 完全反过来：先把 `accounts` 上指向 `users` 的两条约束摘掉，最后再 `DROP TABLE users`。`accounts_owner_fkey` 这个名字是 PostgreSQL 在 `ADD FOREIGN KEY` 没显式命名时自动生成的。
 
+数据库的结构如下：
+![database](../../db02.svg)
+
 ### `migrateup1` / `migratedown1`
 
 给 `Makefile` 里加上"只跑一步"的快捷指令：
