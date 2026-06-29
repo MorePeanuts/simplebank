@@ -65,6 +65,10 @@ ALTER TABLE "sessions" ADD FOREIGN KEY ("username") REFERENCES "users" ("usernam
 - **`user_agent` 和 `client_ip`**：登录那一刻的客户端指纹。后续在管理面板里能列出"这个账号现在有哪些活跃 session、分别来自哪台机器"，也方便人工排查异常登录；
 - **`is_blocked`**：管理员或者用户主动注销时把它置 `true`。renew 时第一关就是判断这个标志位，比删行更轻量，也保留审计痕迹；
 
+此时数据库结构如下：
+
+![db03.svg](../../db03.svg)
+
 `db/query/session.sql` 提供两条最小查询：
 
 ```sql
