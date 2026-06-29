@@ -45,4 +45,13 @@ proto:
 	--go-grpc_out=pb --go-grpc_opt=paths=source_relative \
 	proto/*.proto
 
-.PHONY: postgres createdb dropdb migrateup migrateup1 migratedown migratedown1 db_docs db_schema sqlc test server mock proto
+evans:
+	docker run --rm -it -v "$$(pwd):/mount:ro" -w /mount \
+	ghcr.io/ktr0731/evans:latest \
+	--path proto/ \
+	--proto service_simple_bank.proto \
+	--host host.docker.internal \
+	--port 9090 \
+	repl
+
+.PHONY: postgres createdb dropdb migrateup migrateup1 migratedown migratedown1 db_docs db_schema sqlc test server mock proto evans
