@@ -29,6 +29,7 @@ db_schema:
 
 sqlc:
 	sqlc generate
+	mockgen -package mockdb -destination db/mock/store.go github.com/MorePeanuts/simplebank/db/sqlc Store
 
 test:
 	go test -v -cover ./...
